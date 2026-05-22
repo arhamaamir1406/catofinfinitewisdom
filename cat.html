@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Black Cat</title>
+<style>
+* { margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+canvas { display: block; background: #fff; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const cv = document.getElementById('c'), cx = cv.getContext('2d');
+cv.width = innerWidth; cv.height = innerHeight;
+window.addEventListener('resize', () => { cv.width = innerWidth; cv.height = innerHeight; });
+
+const cat = {
+  x: innerWidth / 2, y: innerHeight / 2,
+  ang: 0, tx: 0, ty: 0,
+  leg: 0, t: 0,
+  blink: false, blinkT: 0, nextBlink: 240 + Math.random() * 200,
+};
+const SPEED = 1.9, SC = 1.4;
+
+function newTarget() {
+  const m = 140;
+  cat.tx = m + Math.random() * (cv.width  - m * 2);
+  cat.ty = m + Math.random() * (cv.height - m * 2);
+}
+newTarget();
+
+/* ─── Leg: upper+lower segment + paw ─── */
+function drawLeg(ox, oy, sw) {
+  const UL = 20, LL = 19;
+  cx.save();
+  cx.translate(ox, oy);
+  cx.rotate(sw);
+  cx.lineWidth = 11; cx.lineCap = 'round'; cx.strokeStyle = '#111';
+  cx.beginPath(); cx.moveTo(0, 0); cx.lineTo(0, UL); cx.stroke();
+  cx.save();
+  cx.translate(0, UL);
+  cx.rotate(-sw * 0.55);
+  cx.lineWidth = 9;
+  cx.beginPath(); cx.moveTo(0, 0); cx.lineTo(0, LL); cx.stroke();
+  cx.translate(0, LL);
+  cx.beginPath(); cx.ellipse(0, 3, 8, 5, 0, 0, Math.PI * 2);
+  cx.fillStyle = '#111'; cx.fill();
+  cx.restore();
+  cx.restore();
+}
+
+/* ─── Full cat drawing ─── */
+function drawCat() {
+  const { x, y, ang, leg: lp, t, blink } = cat;
+  const sw  = Math.sin(lp) * 0.38;
+  const bob = Math.abs(Math.sin(lp)) * 3;
+  const ts  = Math.sin(t * 0.05) * 16; // tail sway
+
+  /* Shadow — world space, not rotated */
+  cx.save();
+  cx.translate(x, y + 38 * SC);
+  cx.beginPath(); cx.ellipse(0, 0, 46 * SC, 10 * SC, 0, 0, Math.PI * 2);
+  cx.fillStyle = 'rgba(0,0,0,0.06)'; cx.fill();
+  cx.restore();
+
+  cx.save();
+  cx.translate(x, y);
+  cx.rotate(ang);
+  cx.scale(SC, SC);
+  cx.translate(0, bob * 0.4);
+
+  /* ── TAIL ── */
+  cx.save();
+  cx.beginPath();
+  cx.moveTo(-48, 3);
+  cx.bezierCurveTo(-70, -8 + ts * 0.25, -76, -46 + ts * 0.65, -56, -80 + ts);
+  cx.lineWidth = 13; cx.strokeStyle = '#111'; cx.lineCap = 'round'; cx.stroke();
+  /* tip */
+  cx.beginPath(); cx.arc(-56, -80 + ts, 8, 0, Math.PI * 2);
+  cx.fillStyle = '#111'; cx.fill();
+  cx.restore();
+
+  /* ── BACK LEGS ── */
+  drawLeg(-27, 23, -sw * 0.9);
+  drawLeg(-13, 23,  sw * 0.9);
+
+  /* ── BODY ── */
+  cx.beginPath(); cx.ellipse(0, 0, 50, 29, 0, 0, Math.PI * 2);
+  cx.fillStyle = '#111'; cx.fill();
+  /* sheen */
+  const bg = cx.createRadialGradient(-12, -11, 2, 0, -2, 46);
+  bg.addColorStop(0, 'rgba(255,255,255,0.09)');
+  bg.addColorStop(1, 'rgba(0,0,0,0)');
+  cx.fillStyle = bg; cx.fill();
+
+  /* ── FRONT LEGS ── */
+  drawLeg(17, 23,  sw);
+  drawLeg(30, 23, -sw);
+
+  /* ── NECK ── */
+  cx.beginPath(); cx.ellipse(32, -12, 18, 15, 0.22, 0, Math.PI * 2);
+  cx.fillStyle = '#111'; cx.fill();
+
+  /* ── HEAD ── */
+  const HX = 50, HY = -30;
+
+  /* Ears */
+  cx.fillStyle = '#111';
+  cx.beginPath(); cx.moveTo(HX-14,HY-13); cx.lineTo(HX-25,HY-42); cx.lineTo(HX-1,HY-27); cx.closePath(); cx.fill();
+  cx.beginPath(); cx.moveTo(HX-13,HY-17); cx.lineTo(HX-20,HY-34); cx.lineTo(HX-3,HY-24); cx.closePath();
+  cx.fillStyle = '#1e0a14'; cx.fill();
+
+  cx.fillStyle = '#111';
+  cx.beginPath(); cx.moveTo(HX+9,HY-13); cx.lineTo(HX+21,HY-42); cx.lineTo(HX+28,HY-25); cx.closePath(); cx.fill();
+  cx.beginPath(); cx.moveTo(HX+10,HY-17); cx.lineTo(HX+18,HY-34); cx.lineTo(HX+24,HY-23); cx.closePath();
+  cx.fillStyle = '#1e0a14'; cx.fill();
+
+  /* Head circle */
+  cx.beginPath(); cx.arc(HX, HY, 25, 0, Math.PI * 2);
+  cx.fillStyle = '#111'; cx.fill();
+  const hg = cx.createRadialGradient(HX-9, HY-10, 1, HX, HY, 25);
+  hg.addColorStop(0, 'rgba(255,255,255,0.1)');
+  hg.addColorStop(1, 'rgba(0,0,0,0)');
+  cx.fillStyle = hg; cx.fill();
+
+  /* Eyes */
+  if (blink) {
+    cx.strokeStyle = '#555'; cx.lineWidth = 2.5; cx.lineCap = 'round';
+    cx.beginPath(); cx.moveTo(HX-12,HY-6); cx.lineTo(HX-3,HY-6); cx.stroke();
+    cx.beginPath(); cx.moveTo(HX+3, HY-6); cx.lineTo(HX+12,HY-6); cx.stroke();
+  } else {
+    [[HX-7, HY-6], [HX+7, HY-6]].forEach(([ex, ey]) => {
+      /* Iris */
+      cx.beginPath(); cx.ellipse(ex, ey, 6.5, 7.5, 0, 0, Math.PI * 2);
+      const ig = cx.createRadialGradient(ex, ey-2, 0.5, ex, ey, 7.5);
+      ig.addColorStop(0,   '#ffe844');
+      ig.addColorStop(0.55,'#d4a010');
+      ig.addColorStop(1,   '#7a5000');
+      cx.fillStyle = ig; cx.fill();
+      /* Pupil slit */
+      cx.beginPath(); cx.ellipse(ex, ey, 2.5, 6, 0, 0, Math.PI * 2);
+      cx.fillStyle = '#060606'; cx.fill();
+      /* Catchlight */
+      cx.beginPath(); cx.arc(ex+1.5, ey-2.5, 1.8, 0, Math.PI * 2);
+      cx.fillStyle = 'rgba(255,255,255,0.88)'; cx.fill();
+    });
+  }
+
+  /* Nose */
+  cx.beginPath(); cx.moveTo(HX+2,HY+5); cx.lineTo(HX+6,HY+10); cx.lineTo(HX-2,HY+10); cx.closePath();
+  cx.fillStyle = '#b85070'; cx.fill();
+
+  /* Mouth */
+  cx.strokeStyle = '#777'; cx.lineWidth = 1.3; cx.lineCap = 'round';
+  cx.beginPath(); cx.moveTo(HX+2,HY+10); cx.quadraticCurveTo(HX-4,HY+15,HX-10,HY+14); cx.stroke();
+  cx.beginPath(); cx.moveTo(HX+2,HY+10); cx.quadraticCurveTo(HX+8, HY+15,HX+14,HY+14); cx.stroke();
+
+  /* Whiskers */
+  cx.strokeStyle = 'rgba(215,215,215,0.82)'; cx.lineWidth = 1.1; cx.lineCap = 'round';
+  [ [HX-4,HY+4, HX-33,HY+0], [HX-4,HY+8, HX-35,HY+8], [HX-4,HY+12,HX-31,HY+17] ].forEach(
+    ([x1,y1,x2,y2]) => { cx.beginPath(); cx.moveTo(x1,y1); cx.lineTo(x2,y2); cx.stroke(); }
+  );
+  [ [HX+10,HY+4, HX+37,HY+0], [HX+10,HY+8, HX+39,HY+8], [HX+10,HY+12,HX+35,HY+17] ].forEach(
+    ([x1,y1,x2,y2]) => { cx.beginPath(); cx.moveTo(x1,y1); cx.lineTo(x2,y2); cx.stroke(); }
+  );
+
+  cx.restore();
+}
+
+/* ─── Main loop ─── */
+function frame() {
+  cx.clearRect(0, 0, cv.width, cv.height);
+
+  /* Autonomous steering */
+  const dx = cat.tx - cat.x, dy = cat.ty - cat.y;
+  if (Math.hypot(dx, dy) < 90) newTarget();
+
+  /* Edge avoidance: steer toward a new interior target */
+  const m = 110;
+  if (cat.x < m || cat.x > cv.width - m || cat.y < m || cat.y > cv.height - m) newTarget();
+
+  let da = Math.atan2(dy, dx) - cat.ang;
+  while (da >  Math.PI) da -= Math.PI * 2;
+  while (da < -Math.PI) da += Math.PI * 2;
+  cat.ang += da * 0.04;
+
+  cat.x += Math.cos(cat.ang) * SPEED;
+  cat.y += Math.sin(cat.ang) * SPEED;
+
+  cat.leg += 0.15;
+  cat.t++;
+  cat.blinkT++;
+  if (!cat.blink && cat.blinkT > cat.nextBlink) cat.blink = true;
+  if ( cat.blink && cat.blinkT > cat.nextBlink + 7) {
+    cat.blink = false; cat.blinkT = 0;
+    cat.nextBlink = 220 + Math.random() * 280;
+  }
+
+  drawCat();
+  requestAnimationFrame(frame);
+}
+
+frame();
+</script>
+</body>
+</html>
