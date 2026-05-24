@@ -24,36 +24,100 @@
       background-image: url('cat_blink.png');
       background-repeat: no-repeat;
       background-size: 1110px 202px;
+      cursor: pointer;
+    }
+
+    #close-canvas {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div id="cat"></div>
+  <canvas id="close-canvas"></canvas>
 
   <script>
     const FRAME_W = 185;
-    const cat = document.getElementById('cat');
+    const cat    = document.getElementById('cat');
+    const canvas = document.getElementById('close-canvas');
+    const ctx    = canvas.getContext('2d');
+
+    const img1  = new Image();
+    const img2  = new Image();
+    img1.src = 'closeframe1.png';
+    img2.src = 'closeframe2.png';
+
+    const meow = new Audio('soundreality-cat-meow-fx-461188.mp3');
+
+    let blinkTimer   = null;
+    let clicking     = false;
+    let closeTimeout = null;
 
     function show(f) {
       cat.style.backgroundPosition = `-${f * FRAME_W}px 0px`;
     }
 
     function doBlink() {
+      if (clicking) return;
       const slow = Math.random() < 0.25;
-      const c    = slow ? 180 : 110;  // ms per closing step
+      const c    = slow ? 180 : 110;
 
-      // Close gradually: 0 → 1 → 2 → 3, then snap open immediately
-      setTimeout(() => show(1), 0);
-      setTimeout(() => show(2), c);
-      setTimeout(() => show(3), c * 2);
+      setTimeout(() => { if (!clicking) show(1); }, 0);
+      setTimeout(() => { if (!clicking) show(2); }, c);
+      setTimeout(() => { if (!clicking) show(3); }, c * 2);
       setTimeout(() => {
-        show(0);  // snap open — no symmetric return = no second blink
-        setTimeout(doBlink, 2500 + Math.random() * 3500);
+        if (!clicking) {
+          show(0);
+          blinkTimer = setTimeout(doBlink, 2500 + Math.random() * 3500);
+        }
       }, c * 2 + 50);
     }
 
+    function drawOnCanvas(img) {
+      const maxW = window.innerWidth * 0.8;
+      const maxH = window.innerHeight * 0.9;
+      const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+      const w = Math.round(img.naturalWidth  * scale);
+      const h = Math.round(img.naturalHeight * scale);
+      canvas.width  = w;
+      canvas.height = h;
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+    }
+
+    function startCloseAnimation() {
+      if (clicking) return;
+      clicking = true;
+      clearTimeout(blinkTimer);
+
+      drawOnCanvas(img1);
+      cat.style.display = 'none';
+      canvas.style.display = 'block';
+      meow.currentTime = 0;
+      meow.play();
+
+      setTimeout(() => { drawOnCanvas(img2); }, 600);
+      meow.addEventListener('ended', () => { drawOnCanvas(img1); }, { once: true });
+
+      closeTimeout = setTimeout(() => {
+        canvas.style.display = 'none';
+        cat.style.display = '';
+        clicking = false;
+        show(0);
+        blinkTimer = setTimeout(doBlink, 2500 + Math.random() * 3500);
+      }, 10000);
+    }
+
+    canvas.addEventListener('click', startCloseAnimation);
+    cat.addEventListener('click', startCloseAnimation);
+
     show(0);
-    setTimeout(doBlink, 1500 + Math.random() * 2500);
+    blinkTimer = setTimeout(doBlink, 1500 + Math.random() * 2500);
   </script>
 </body>
 </html>
