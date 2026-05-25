@@ -1,16 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cat Animation</title>
+  <title>CatofInfiniteWisdom</title>
   <style>
     @font-face {
       font-family: 'Tulados';
       src: url('tulados.ttf') format('truetype');
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       background: #ffffff;
@@ -68,6 +73,7 @@
     }
   </style>
 </head>
+
 <body>
   <div id="cat"></div>
   <canvas id="close-canvas"></canvas>
@@ -75,12 +81,12 @@
   <div id="quote-text"></div>
 
   <script>
-    const FRAME_W  = 185;
-    const cat      = document.getElementById('cat');
-    const canvas   = document.getElementById('close-canvas');
-    const ctx      = canvas.getContext('2d');
-    const quoteEl  = document.getElementById('quote-text');
-    const diedImg  = document.getElementById('died-img');
+    const FRAME_W = 185;
+    const cat = document.getElementById('cat');
+    const canvas = document.getElementById('close-canvas');
+    const ctx = canvas.getContext('2d');
+    const quoteEl = document.getElementById('quote-text');
+    const diedImg = document.getElementById('died-img');
 
     const QUOTES = [
       "What punishments of God are not gifts?",
@@ -114,7 +120,7 @@
     // Use local date so midnight resets at the right time for each user
     function getToday() {
       const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
     function shuffle(arr) {
@@ -132,7 +138,7 @@
       try {
         const p = JSON.parse(localStorage.getItem('quotePool'));
         if (Array.isArray(p) && p.length > 0) return p;
-      } catch {}
+      } catch { }
       return shuffle(QUOTES);
     }
 
@@ -148,7 +154,7 @@
     // Load today's pre-built batch, or create a fresh one for a new day
     let todayBatch;
     if (localStorage.getItem('catDate') === getToday()) {
-      try { todayBatch = JSON.parse(localStorage.getItem('todayBatch')); } catch {}
+      try { todayBatch = JSON.parse(localStorage.getItem('todayBatch')); } catch { }
     }
     if (!Array.isArray(todayBatch) || todayBatch.length === 0) {
       todayBatch = buildTodayBatch();
@@ -166,10 +172,10 @@
     }
 
     function fitQuoteAbove(aboveHeight) {
-      const gap       = 24;
+      const gap = 24;
       const topMargin = 16;
       const available = window.innerHeight - aboveHeight - gap - topMargin;
-      quoteEl.style.bottom   = (aboveHeight + gap) + 'px';
+      quoteEl.style.bottom = (aboveHeight + gap) + 'px';
       quoteEl.style.fontSize = '2.109375rem';
       let size = 2.109375;
       while (quoteEl.scrollHeight > available && size > 0.75) {
@@ -180,7 +186,7 @@
 
     // showQuote reads todayBatch[clickCount] BEFORE incrementClickCount is called
     function showQuote() {
-      quoteEl.textContent   = todayBatch[clickCount];
+      quoteEl.textContent = todayBatch[clickCount];
       quoteEl.style.display = 'block';
       fitQuoteAbove(canvas.height);
     }
@@ -198,7 +204,7 @@
     const diedAudio = new Audio('diedaudio.mp3');
 
     let blinkTimer = null;
-    let clicking   = false;
+    let clicking = false;
 
     function show(f) {
       cat.style.backgroundPosition = `-${f * FRAME_W}px 0px`;
@@ -207,7 +213,7 @@
     function doBlink() {
       if (clicking) return;
       const slow = Math.random() < 0.25;
-      const c    = slow ? 180 : 110;
+      const c = slow ? 180 : 110;
 
       setTimeout(() => { if (!clicking) show(1); }, 0);
       setTimeout(() => { if (!clicking) show(2); }, c);
@@ -224,9 +230,9 @@
       const maxW = window.innerWidth * 0.6;
       const maxH = window.innerHeight * 0.675;
       const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
-      const w = Math.round(img.naturalWidth  * scale);
+      const w = Math.round(img.naturalWidth * scale);
       const h = Math.round(img.naturalHeight * scale);
-      canvas.width  = w;
+      canvas.width = w;
       canvas.height = h;
       ctx.clearRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
@@ -286,4 +292,5 @@
     blinkTimer = setTimeout(doBlink, 1500 + Math.random() * 2500);
   </script>
 </body>
+
 </html>
