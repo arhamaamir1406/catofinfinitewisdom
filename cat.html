@@ -41,6 +41,17 @@
       cursor: pointer;
     }
 
+    #died-img {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      cursor: pointer;
+    }
+
     #quote-text {
       display: none;
       position: fixed;
@@ -48,7 +59,7 @@
       transform: translateX(-50%);
       text-align: center;
       font-family: 'Tulados', 'Georgia', serif;
-      font-size: 1.35rem;
+      font-size: 2.109375rem;
       line-height: 1.6;
       color: #1a1a1a;
       max-width: 560px;
@@ -60,6 +71,7 @@
 <body>
   <div id="cat"></div>
   <canvas id="close-canvas"></canvas>
+  <img id="died-img" src="died.jpg" alt="">
   <div id="quote-text"></div>
 
   <script>
@@ -68,6 +80,7 @@
     const canvas   = document.getElementById('close-canvas');
     const ctx      = canvas.getContext('2d');
     const quoteEl  = document.getElementById('quote-text');
+    const diedImg  = document.getElementById('died-img');
 
     const QUOTES = [
       "What punishments of God are not gifts?",
@@ -96,35 +109,93 @@
       "Maybe God made animals unable to talk to show that love is proven through actions, not words.",
     ];
 
-    let quoteQueue = [];
+    const DAILY_LIMIT = 9;
 
-    function nextQuote() {
-      if (quoteQueue.length === 0) {
-        quoteQueue = [...QUOTES];
-        for (let i = quoteQueue.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [quoteQueue[i], quoteQueue[j]] = [quoteQueue[j], quoteQueue[i]];
-        }
-      }
-      return quoteQueue.pop();
+    // Use local date so midnight resets at the right time for each user
+    function getToday() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // Persistent pool: the remaining quotes not yet used across previous days.
+    // When pool runs dry (< 9 left), refill with a fresh shuffle of all quotes.
+    function loadPool() {
+      try {
+        const p = JSON.parse(localStorage.getItem('quotePool'));
+        if (Array.isArray(p) && p.length > 0) return p;
+      } catch {}
+      return shuffle(QUOTES);
+    }
+
+    function buildTodayBatch() {
+      let pool = loadPool();
+      if (pool.length < 9) pool = shuffle(QUOTES);
+      const batch = pool.splice(0, 9);
+      localStorage.setItem('quotePool', JSON.stringify(pool));
+      localStorage.setItem('todayBatch', JSON.stringify(batch));
+      return batch;
+    }
+
+    // Load today's pre-built batch, or create a fresh one for a new day
+    let todayBatch;
+    if (localStorage.getItem('catDate') === getToday()) {
+      try { todayBatch = JSON.parse(localStorage.getItem('todayBatch')); } catch {}
+    }
+    if (!Array.isArray(todayBatch) || todayBatch.length === 0) {
+      todayBatch = buildTodayBatch();
+    }
+
+    // In-memory counter, seeded from localStorage on load
+    let clickCount = (localStorage.getItem('catDate') === getToday())
+      ? (parseInt(localStorage.getItem('catCount'), 10) || 0)
+      : 0;
+
+    function incrementClickCount() {
+      clickCount++;
+      localStorage.setItem('catDate', getToday());
+      localStorage.setItem('catCount', String(clickCount));
+    }
+
+    function fitQuoteAbove(aboveHeight) {
+      const gap       = 24;
+      const topMargin = 16;
+      const available = window.innerHeight - aboveHeight - gap - topMargin;
+      quoteEl.style.bottom   = (aboveHeight + gap) + 'px';
+      quoteEl.style.fontSize = '2.109375rem';
+      let size = 2.109375;
+      while (quoteEl.scrollHeight > available && size > 0.75) {
+        size -= 0.05;
+        quoteEl.style.fontSize = size.toFixed(4) + 'rem';
+      }
+    }
+
+    // showQuote reads todayBatch[clickCount] BEFORE incrementClickCount is called
     function showQuote() {
-      quoteEl.textContent = nextQuote();
+      quoteEl.textContent   = todayBatch[clickCount];
       quoteEl.style.display = 'block';
-      quoteEl.style.bottom = (canvas.height + 24) + 'px';
+      fitQuoteAbove(canvas.height);
     }
 
     function hideQuote() {
       quoteEl.style.display = 'none';
     }
 
-    const img1  = new Image();
-    const img2  = new Image();
+    const img1 = new Image();
+    const img2 = new Image();
     img1.src = 'closeframe1.png';
     img2.src = 'closeframe2.png';
 
     const meow = new Audio('soundreality-cat-meow-fx-461188.mp3');
+    const diedAudio = new Audio('diedaudio.mp3');
 
     let blinkTimer = null;
     let clicking   = false;
@@ -163,6 +234,9 @@
 
     function dismissBigCat() {
       canvas.style.display = 'none';
+      diedImg.style.display = 'none';
+      diedAudio.pause();
+      diedAudio.currentTime = 0;
       hideQuote();
       cat.style.display = '';
       clicking = false;
@@ -172,18 +246,34 @@
 
     function startCloseAnimation() {
       if (clicking) return;
+
+      // Reset counter and get a fresh batch if the day has rolled over
+      if (localStorage.getItem('catDate') !== getToday()) {
+        clickCount = 0;
+        todayBatch = buildTodayBatch();
+      }
+
       clicking = true;
       clearTimeout(blinkTimer);
 
-      drawOnCanvas(img1);
       cat.style.display = 'none';
-      canvas.style.display = 'block';
-      showQuote();
-      meow.currentTime = 0;
-      meow.play();
 
-      setTimeout(() => { drawOnCanvas(img2); }, 600);
-      meow.addEventListener('ended', () => { drawOnCanvas(img1); }, { once: true });
+      if (clickCount >= DAILY_LIMIT) {
+        // Limit reached — show died screen
+        canvas.style.display = 'none';
+        diedImg.style.display = 'block';
+        diedAudio.currentTime = 1;
+        diedAudio.play();
+      } else {
+        canvas.style.display = 'block';
+        drawOnCanvas(img1);
+        showQuote();
+        incrementClickCount();
+        meow.currentTime = 0;
+        meow.play();
+        setTimeout(() => { drawOnCanvas(img2); }, 600);
+        meow.addEventListener('ended', () => { drawOnCanvas(img1); }, { once: true });
+      }
 
       setTimeout(() => {
         document.addEventListener('click', dismissBigCat, { once: true });
