@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cat Animation</title>
   <style>
+    @font-face {
+      font-family: 'Tulados';
+      src: url('tulados.ttf') format('truetype');
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
@@ -35,17 +40,84 @@
       transform: translateX(-50%);
       cursor: pointer;
     }
+
+    #quote-text {
+      display: none;
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      font-family: 'Tulados', 'Georgia', serif;
+      font-size: 1.35rem;
+      line-height: 1.6;
+      color: #1a1a1a;
+      max-width: 560px;
+      width: 90vw;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
   <div id="cat"></div>
   <canvas id="close-canvas"></canvas>
+  <div id="quote-text"></div>
 
   <script>
-    const FRAME_W = 185;
-    const cat    = document.getElementById('cat');
-    const canvas = document.getElementById('close-canvas');
-    const ctx    = canvas.getContext('2d');
+    const FRAME_W  = 185;
+    const cat      = document.getElementById('cat');
+    const canvas   = document.getElementById('close-canvas');
+    const ctx      = canvas.getContext('2d');
+    const quoteEl  = document.getElementById('quote-text');
+
+    const QUOTES = [
+      "What punishments of God are not gifts?",
+      "In the end, we will remember not the words of our enemies, but the silence of our friends.",
+      "No amount of guilt can solve the past, and no amount of anxiety can change the future.",
+      "You will never gain independence if you rely on validation.",
+      "We live in a world full of sinners judging each other for sinning differently.",
+      "You kill your dreams every time you tell them to the wrong people.",
+      "The life in front of you is far more important than the life behind you.",
+      "Whenever there is no shoulder to cry on, there is always a ground to kneel and pray.",
+      "When people fall in love with someone's flowers and not their roots, they do not know what to do when autumn comes.",
+      "It won't matter how loud you love if the other person isn't listening.",
+      "You will never find the same person twice, not even in the same person.",
+      "Some relationships will end when you choose yourself.",
+      "Man is the most insane species. He worships an invisible God and destroys a visible nature, unaware that this nature he's destroying is the God he's worshipping.",
+      "I wept when I had no shoes, until I met a man who had no feet.",
+      "Every person has two lives, and the second starts when they realize that they have one.",
+      "When the power of love overcomes the love of power, the world will know peace.",
+      "Sometimes the wrong train will get you to the right destination.",
+      "People won't remember what you said, but people will always remember how you made them feel.",
+      "When an egg is cracked from within, it means the bird inside is ready to fly free. If it is cracked from the outside, the egg is going to be cooked.",
+      "While the world does keep moving, it can be a damn cruel place. But those moments of stillness — that's where the kingdom of God is.",
+      "And now that you don't have to be perfect, you can be good.",
+      "That's right, we can fly. People can fly.",
+      "Sometimes I wake up and I'm Michael Beasley. Sometimes I wake up and I can't find him.",
+      "Maybe God made animals unable to talk to show that love is proven through actions, not words.",
+    ];
+
+    let quoteQueue = [];
+
+    function nextQuote() {
+      if (quoteQueue.length === 0) {
+        quoteQueue = [...QUOTES];
+        for (let i = quoteQueue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [quoteQueue[i], quoteQueue[j]] = [quoteQueue[j], quoteQueue[i]];
+        }
+      }
+      return quoteQueue.pop();
+    }
+
+    function showQuote() {
+      quoteEl.textContent = nextQuote();
+      quoteEl.style.display = 'block';
+      quoteEl.style.bottom = (canvas.height + 24) + 'px';
+    }
+
+    function hideQuote() {
+      quoteEl.style.display = 'none';
+    }
 
     const img1  = new Image();
     const img2  = new Image();
@@ -54,9 +126,8 @@
 
     const meow = new Audio('soundreality-cat-meow-fx-461188.mp3');
 
-    let blinkTimer   = null;
-    let clicking     = false;
-    let closeTimeout = null;
+    let blinkTimer = null;
+    let clicking   = false;
 
     function show(f) {
       cat.style.backgroundPosition = `-${f * FRAME_W}px 0px`;
@@ -79,8 +150,8 @@
     }
 
     function drawOnCanvas(img) {
-      const maxW = window.innerWidth * 0.8;
-      const maxH = window.innerHeight * 0.9;
+      const maxW = window.innerWidth * 0.6;
+      const maxH = window.innerHeight * 0.675;
       const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
       const w = Math.round(img.naturalWidth  * scale);
       const h = Math.round(img.naturalHeight * scale);
@@ -88,6 +159,15 @@
       canvas.height = h;
       ctx.clearRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
+    }
+
+    function dismissBigCat() {
+      canvas.style.display = 'none';
+      hideQuote();
+      cat.style.display = '';
+      clicking = false;
+      show(0);
+      blinkTimer = setTimeout(doBlink, 2500 + Math.random() * 3500);
     }
 
     function startCloseAnimation() {
@@ -98,22 +178,18 @@
       drawOnCanvas(img1);
       cat.style.display = 'none';
       canvas.style.display = 'block';
+      showQuote();
       meow.currentTime = 0;
       meow.play();
 
       setTimeout(() => { drawOnCanvas(img2); }, 600);
       meow.addEventListener('ended', () => { drawOnCanvas(img1); }, { once: true });
 
-      closeTimeout = setTimeout(() => {
-        canvas.style.display = 'none';
-        cat.style.display = '';
-        clicking = false;
-        show(0);
-        blinkTimer = setTimeout(doBlink, 2500 + Math.random() * 3500);
-      }, 10000);
+      setTimeout(() => {
+        document.addEventListener('click', dismissBigCat, { once: true });
+      }, 0);
     }
 
-    canvas.addEventListener('click', startCloseAnimation);
     cat.addEventListener('click', startCloseAnimation);
 
     show(0);
