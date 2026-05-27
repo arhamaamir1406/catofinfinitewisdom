@@ -65,7 +65,7 @@
       transform: translateX(-50%);
       text-align: center;
       font-family: 'Tulados', 'Georgia', serif;
-      font-size: 1.1rem;
+      font-size: 2.109375rem;
       line-height: 1.6;
       color: #1a1a1a;
       max-width: 560px;
@@ -178,8 +178,8 @@
       const topMargin = 16;
       const available = window.innerHeight - aboveHeight - gap - topMargin;
       quoteEl.style.bottom = (aboveHeight + gap) + 'px';
-      quoteEl.style.fontSize = '1.1rem';
-      let size = 1.1;
+      quoteEl.style.fontSize = '2.109375rem';
+      let size = 2.109375;
       while (quoteEl.scrollHeight > available && size > 0.75) {
         size -= 0.05;
         quoteEl.style.fontSize = size.toFixed(4) + 'rem';
